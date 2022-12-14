@@ -1,0 +1,11 @@
+mosquitto_sub -h eu1.cloud.thethings.network -t "#" -u "projetocm-2022@ttn" -P "NNSXS.QDRZLOSNBD7R27IVEAKD5OTDHSGQGVFWKZG26VQ.M42JIVQB2OXOTS2Y7IRARJJFDVXZCBZ2VODR7QC2JX6E5MT7TG5Q" -d
+
+mosquitto_sub -h eu1.cloud.thethings.network -t "#" -u "projetocm-2022@ttn" -P "NNSXS.QDRZLOSNBD7R27IVEAKD5OTDHSGQGVFWKZG26VQ.M42JIVQB2OXOTS2Y7IRARJJFDVXZCBZ2VODR7QC2JX6E5MT7TG5Q" -d
+
+
+
+docker run -it hivemq/mqtt-cli shell
+
+con -h "eu1.cloud.thethings.network" -p "1883" -V 3 -u "projetocm-2022@ttn" -pw "NNSXS.QDRZLOSNBD7R27IVEAKD5OTDHSGQGVFWKZG26VQ.M42JIVQB2OXOTS2Y7IRARJJFDVXZCBZ2VODR7QC2JX6E5MT7TG5Q"
+
+sub -t "v3/projetocm-2022@ttn/devices/eui-70b3d549915fc504/up" -s
