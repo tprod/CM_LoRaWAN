@@ -1,55 +1,54 @@
-from network import LoRa
-import socket
-import time
-import ubinascii
-import struct
+import paho.mqtt.client as mqtt
+import json
+import base64
+from datetime import datetime
 
-# Initialise LoRa in LORAWAN mode.
-# Please pick the region that matches where you are using the device:
-# Asia = LoRa.AS923
-# Australia = LoRa.AU915
-# Europe = LoRa.EU868
-# United States = LoRa.US915
-lora = LoRa(mode=LoRa.LORAWAN, region=LoRa.EU868)
 
-print("DevEUI: " + ubinascii.hexlify(lora.mac()).decode('utf-8').upper())
+# The callback for when the client receives a CONNACK response from the server.
+def on_connect(client, userdata, flags, rc):
+    print("Connected with result code "+str(rc))
 
-# create an OTAA authentication parameters
+    # Subscribing in on_connect() means that if we lose the connection and
+    # reconnect then subscriptions will be renewed.
+    client.subscribe("v3/projetocm-2022@ttn/devices/eui-70b3d549915fc504/up")
 
-app_eui = ubinascii.unhexlify('0000000000000000')
-app_key = ubinascii.unhexlify('B9EC25063B907B9488501A12BBBD7738')
+# The callback for when a PUBLISH message is received from the server.
+def on_message(client, userdata, msg):
 
-# join a network using OTAA (Over the Air Activation)
-lora.join(activation=LoRa.OTAA, auth=(app_eui, app_key), timeout=0)
+	y = json.loads(msg.payload)
+	try:
+		gw = y["uplink_message"]["rx_metadata"][1]["gateway_ids"]["gateway_id"]
+	except Exception as e:
+		gw = "None"
+	try:	
+		snr=y["uplink_message"]["rx_metadata"][1]["snr"]
+	except Exception as e:
+		snr = "None"
+	try:		
+		rssi=y["uplink_message"]["rx_metadata"][1]["rssi"]
+	except Exception as e:
+		rssi = "None"
+	try:	
+		payload=base64.b64decode(y["uplink_message"]["frm_payload"].encode('ascii'))
+	except Exception as e:
+		payload = "None"
+	received = y["received_at"]
+	print(received)
+	datetime_object = datetime.strptime(received.split(".")[0], "%Y-%m-%dT%H:%M:%S")
+	print("\nMessage received"+"\nGateway:"+str(gw)+
+		"\nsnr: "+ str(snr)+
+		"\nrssi: "+ str(rssi)+
+		"\npayload: "+ str(payload))
 
-while not lora.has_joined():
-    print('Not yet joined...')
-    time.sleep(3)
 
-print("Joined network")
+client = mqtt.Client()
+client.on_connect = on_connect
+client.on_message = on_message
+client.username_pw_set("projetocm-2022@ttn", "NNSXS.QDRZLOSNBD7R27IVEAKD5OTDHSGQGVFWKZG26VQ.M42JIVQB2OXOTS2Y7IRARJJFDVXZCBZ2VODR7QC2JX6E5MT7TG5Q")
+client.connect("eu1.cloud.thethings.network", 1883, 60)
 
-# create socket to be used for LoRa communication
-s = socket.socket(socket.AF_LORA, socket.SOCK_RAW)
-# configure data rate
-s.setsockopt(socket.SOL_LORA, socket.SO_DR, 5)
-# make the socket blocking
-# (waits for the data to be sent and for the 2 receive windows to expire)
-for i in range (200):
-    # make the socket blocking
-    # (waits for the data to be sent and for the 2 receive windows to expire)
-    s.setblocking(True)
-
-    # send some data
-    s.send(bytes([0x01, 0x02, 0x03]))
-
-    # make the socket non-blocking
-    # (because if there's no data received it will block forever...)
-    s.setblocking(False)
-
-    #get any data received (if any...)
-    data = s.recv(64)
-    print(data)
-
-    print(lora.stats())
-
-    time.sleep(10)
+# Blocking call that processes network traffic, dispatches callbacks and
+# handles reconnecting.
+# Other loop*() functions are available that give a threaded interface and a
+# manual interface.
+client.loop_forever()
